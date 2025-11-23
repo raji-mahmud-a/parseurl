@@ -1,5 +1,5 @@
 var assert = require('assert')
-var parseurl = require('..')
+var parseurl = require('../t.js')
 
 var URL_EMPTY_VALUE = null
 
@@ -60,8 +60,8 @@ describe('parseurl(req)', function () {
     assert.strictEqual(url.href, 'http://localhost:8888/foo/bar')
     assert.strictEqual(url.pathname, '/foo/bar')
     assert.strictEqual(url.port, '8888')
-    assert.strictEqual(url.query, '')
-    assert.strictEqual(url.search, '')
+    assert.strictEqual(url.query, null)
+    assert.strictEqual(url.search, null)
   })
 
   it('should not choke on auth-looking URL', function () {
