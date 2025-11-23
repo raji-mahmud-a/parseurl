@@ -2,9 +2,7 @@ var assert = require('assert')
 var parseurl = require('..')
 var url = require('url')
 
-var URL_EMPTY_VALUE = url.Url
-  ? null
-  : undefined
+var URL_EMPTY_VALUE = null
 
 describe('parseurl(req)', function () {
   it('should parse the request URL', function () {
@@ -63,8 +61,8 @@ describe('parseurl(req)', function () {
     assert.strictEqual(url.href, 'http://localhost:8888/foo/bar')
     assert.strictEqual(url.pathname, '/foo/bar')
     assert.strictEqual(url.port, '8888')
-    assert.strictEqual(url.query, URL_EMPTY_VALUE)
-    assert.strictEqual(url.search, URL_EMPTY_VALUE)
+    assert.strictEqual(url.query, "")
+    assert.strictEqual(url.search, "")
   })
 
   it('should not choke on auth-looking URL', function () {

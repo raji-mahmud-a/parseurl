@@ -181,18 +181,15 @@ function fullparse (str) {
     }
 
     out.href = rawHref
-    out.path = (u.pathname || '') + (u.search || '')
-    // Use undefined (rather than null) when a WHATWG field is not present.
-    // This keeps the properties absent/undefined instead of explicitly null,
-    // which generally aligns better with JS/WHATWG semantics.
-    out.pathname = u.pathname || undefined
-    out.search = u.search || undefined
-    out.query = u.search ? u.search.slice(1) : undefined
-    out.hash = u.hash || undefined
-    out.host = u.host || undefined
-    out.hostname = u.hostname || undefined
-    out.port = u.port || undefined
-    out.protocol = u.protocol || undefined
+    out.path = (u.pathname || '') + (u.search || "")
+    out.pathname = u.pathname
+    out.search = u.search
+    out.query = out.search !==null ? out.search.slice(1) : ""
+    out.hash = u.hash
+    out.host = u.host
+    out.hostname = u.hostname
+    out.port = u.port
+    out.protocol = u.protocol
 
     // Synthesize legacy .auth from username/password when present
     if (u.username || u.password) {
@@ -210,7 +207,6 @@ function fullparse (str) {
 
 /**
  * Determine if parsed is still fresh for url.
- *
  * @param {string} url
  * @param {object} parsedUrl
  * @return {boolean}
