@@ -181,10 +181,10 @@ function fullparse (str) {
     }
 
     out.href = rawHref
-    out.path = (u.pathname || '') + (u.search || "")
+    out.path = (u.pathname || '') + (u.search || '')
     out.pathname = u.pathname
     out.search = u.search
-    out.query = out.search !==null ? out.search.slice(1) : ""
+    out.query = out.search !== null ? out.search.slice(1) : ''
     out.hash = u.hash
     out.host = u.host
     out.hostname = u.hostname
@@ -226,4 +226,4 @@ function fresh (url, parsedUrl) {
 
   // No Url constructors available in environment, accept plain objects.
   return true
-    }
+}
