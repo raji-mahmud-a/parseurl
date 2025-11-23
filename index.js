@@ -1,5 +1,5 @@
 /*!
- * parseurl (WHATWG-aware patch)
+ * parseurl (WHATWG patch) updated to use WHATWG api by Raji Mahmud
  * Copyright(c) 2014 Jonathan Ong
  * Copyright(c) 2014-2017 Douglas Christopher Wilson
  * MIT Licensed
