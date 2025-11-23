@@ -13,7 +13,7 @@
  */
 
 var legacy = require('url')
-var legacyParse = legacy.parse // eslint-disable-line
+var legacyParse = legacy.parse
 var LegacyUrl = legacy.Url
 var WHATWG = legacy.URL || global.URL
 
@@ -128,85 +128,116 @@ function fastparse (str) {
     }
   }
 
-  // Keep compatibility with legacy behavior: prefer legacy Url instance when available
-  var url = LegacyUrl !== undefined
-    ? new LegacyUrl()
-    : {}
+  // Return plain object (not legacy Url instance)
+  var url = {}
 
   url.path = str
   url.href = str
   url.pathname = pathname
-
-  if (search !== null) {
-    url.query = query
-    url.search = search
-  } else {
-    url.search = null
-    url.query = null
-  }
+  url.search = search
+  url.query = query
+  url.hash = null
+  url.host = null
+  url.hostname = null
+  url.port = null
+  url.protocol = null
+  url.auth = null
 
   return url
 }
 
 /**
- * Full parse that prefers WHATWG URL but falls back to legacy url.parse.
- * Maps WHATWG URL fields back to the legacy shape used by many callers.
+ * Full parse using WHATWG URL with legacy fallback only for catastrophic failures.
+ * Maps WHATWG URL fields to legacy-compatible shape.
  *
  * @param {string} str
  * @return {Object}
  * @private
  */
 
-var RELATIVE_BASE = 'http://example' // harmless base for relative URLs
+var RELATIVE_BASE = 'http://localhost'
 
 function fullparse (str) {
-  // If WHATWG URL is not available, fallback to legacy parse
-  if (!WHATWG) return legacyParse(str)
+  if (typeof str !== 'string') {
+    return {}
+  }
 
-  try {
-    var usedRelativeBase = (typeof str === 'string' && str.charCodeAt(0) === 0x2f)
-    // WHATWG URL needs a base for relative paths
-    var u = usedRelativeBase ? new WHATWG(str, RELATIVE_BASE) : new WHATWG(str)
+  str = str.trim()
 
-    // We'll return the WHATWG URL instance (so callers can use URL API),
-    // but map legacy-like fields onto it for compatibility with code
-    // that expects url.parse() shape.
-    var out = u
-
-    // Compute href/path as the original input for relative URLs (strip the base)
-    var rawHref = u.href
-    if (usedRelativeBase && rawHref.indexOf(RELATIVE_BASE) === 0) {
-      rawHref = rawHref.slice(RELATIVE_BASE.length)
-      if (rawHref === '') rawHref = '/'
+  // Try WHATWG URL first
+  if (WHATWG) {
+    try {
+      var isRelative = str.charCodeAt(0) === 0x2f /* / */ || !str.includes('://')
+      var parsedUrl = isRelative ? new WHATWG(str, RELATIVE_BASE) : new WHATWG(str)
+      
+      var result = {}
+      
+      // For relative URLs, strip the base from href
+      if (isRelative) {
+        result.href = str
+        result.path = parsedUrl.pathname + parsedUrl.search
+      } else {
+        result.href = parsedUrl.href
+        result.path = parsedUrl.pathname + parsedUrl.search
+      }
+      
+      result.pathname = parsedUrl.pathname
+      result.search = parsedUrl.search || null
+      result.query = parsedUrl.search ? parsedUrl.search.substring(1) : null
+      result.hash = parsedUrl.hash || null
+      
+      // Only populate protocol/host fields for absolute URLs
+      if (parsedUrl.protocol && str.includes('://')) {
+        result.protocol = parsedUrl.protocol
+        result.host = parsedUrl.host
+        result.hostname = parsedUrl.hostname
+        result.port = parsedUrl.port || null
+        result.auth = (parsedUrl.username || parsedUrl.password)
+          ? (parsedUrl.username || '') + (parsedUrl.password ? ':' + parsedUrl.password : '')
+          : null
+      } else {
+        result.protocol = null
+        result.host = null
+        result.hostname = null
+        result.port = null
+        result.auth = null
+      }
+      
+      return result
+    } catch (err) {
+      // WHATWG URL threw - fall through to legacy fallback
     }
-
-    out.href = rawHref
-    out.path = (u.pathname || '') + (u.search || '')
-    out.pathname = u.pathname
-    out.search = u.search
-    out.query = out.search !== null ? out.search.slice(1) : ''
-    out.hash = u.hash
-    out.host = u.host
-    out.hostname = u.hostname
-    out.port = u.port
-    out.protocol = u.protocol
-
-    // Synthesize legacy .auth from username/password when present
-    if (u.username || u.password) {
-      out.auth = (u.username || '') + (u.password ? ':' + u.password : '')
-    } else {
-      out.auth = undefined
+  }
+  
+  // EXTREMELY RARE: Only use legacy parse if WHATWG is unavailable or threw
+  // This should almost never happen in Node.js 10+
+  if (legacyParse) {
+    try {
+      return legacyParse(str)
+    } catch (err) {
+      // Even legacy parse failed
     }
-
-    return out
-  } catch (e) {
-    // WHATWG URL can throw for some malformed inputs; fall back to legacy parse
-    return legacyParse(str)
+  }
+  
+  // Ultimate fallback: return minimal object
+  return {
+    href: str,
+    path: str,
+    pathname: str,
+    search: null,
+    query: null,
+    hash: null,
+    host: null,
+    hostname: null,
+    port: null,
+    protocol: null,
+    auth: null
   }
 }
 
 /**
  * Determine if parsed is still fresh for url.
+ *
  * @param {string} url
  * @param {object} parsedUrl
  * @return {boolean}
@@ -214,16 +245,9 @@ function fullparse (str) {
  */
 
 function fresh (url, parsedUrl) {
-  if (typeof parsedUrl !== 'object' || parsedUrl === null) return false
-  if (parsedUrl._raw !== url) return false
-
-  // If one or both constructors exist, accept instances of either.
-  if (LegacyUrl || WHATWG) {
-    var isLegacyInstance = LegacyUrl && (parsedUrl instanceof LegacyUrl)
-    var isWHATWGInstance = WHATWG && (parsedUrl instanceof WHATWG)
-    return isLegacyInstance || isWHATWGInstance
-  }
-
-  // No Url constructors available in environment, accept plain objects.
-  return true
-}
+  return (
+    typeof parsedUrl === 'object' &&
+    parsedUrl !== null &&
+    parsedUrl._raw === url
+  )
+    }
