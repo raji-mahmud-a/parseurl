@@ -1,5 +1,5 @@
 var assert = require('assert')
-var parseurl = require('../t.js')
+var parseurl = require('..')
 
 var URL_EMPTY_VALUE = null
 
